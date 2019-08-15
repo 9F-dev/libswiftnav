@@ -63,7 +63,7 @@ extern "C" {
 #define GLO_MAX_FCN 14
 
 /* Min number of GLO frequency slot, correspond to frequency slot -7 */
-#define GLO_MIN_FCN 1
+#define GLO_MIN_FCN 4
 
 /* Frequency of GLO channel is unknown */
 #define GLO_FCN_UNKNOWN 0
