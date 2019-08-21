@@ -329,6 +329,10 @@ static inline bool operator==(const gps_time_t &a, const gps_time_t &b) {
   return fabs(gpsdifftime(&a, &b)) < FLOAT_EQUALITY_EPS;
 }
 
+static inline bool operator!=(const gps_time_t &a, const gps_time_t &b) {
+  return !(a == b);
+}
+
 static inline bool operator<(const gps_time_t &a, const gps_time_t &b) {
   return gpsdifftime(&a, &b) < 0;
 }
@@ -336,6 +340,60 @@ static inline bool operator<(const gps_time_t &a, const gps_time_t &b) {
 static inline bool operator>(const gps_time_t &a, const gps_time_t &b) {
   return gpsdifftime(&a, &b) > 0;
 }
+
+static inline bool operator<=(const gps_time_t &a, const gps_time_t &b) {
+  return (a == b) || (a < b);
+}
+
+static inline bool operator>=(const gps_time_t &a, const gps_time_t &b) {
+  return (a == b) || (a > b);
+}
+
+static inline double operator-(const gps_time_t &a, const gps_time_t &b) {
+  return gpsdifftime(&a, &b);
+}
+
+static inline gps_time_t operator+(const gps_time_t &a, double b) {
+  gps_time_t temp = a;
+  temp.tow += b;
+  normalize_gps_time(&temp);
+  return temp;
+}
+
+static inline gps_time_t operator-(const gps_time_t &a, double b) {
+  return a + -b;
+}
+
+static inline gps_time_t& operator+=(gps_time_t &a, double b) {
+  a = a + b;
+  return a;
+}
+
+static inline gps_time_t& operator-=(gps_time_t &a, double b) {
+  a = a - b;
+  return a;
+}
+
+static inline gps_time_t& operator++(gps_time_t &a) {
+  return a += 1;
+}
+
+static inline gps_time_t& operator--(gps_time_t &a) {
+  return a -= 1;
+}
+
+static inline gps_time_t operator++(gps_time_t &a, int) {
+  gps_time_t temp = a;
+  ++a;
+  return temp;
+}
+
+static inline gps_time_t operator--(gps_time_t &a, int) {
+  gps_time_t temp = a;
+  --a;
+  return temp;
+}
+
 #endif
 
 #endif /* LIBSWIFTNAV_GNSS_TIME_H */
