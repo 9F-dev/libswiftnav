@@ -761,7 +761,7 @@ gps_time_t mjd2gps(double mjd) {
   utc_time.tow = (utc_days - utc_time.wn * WEEK_DAYS) * (double)DAY_SECS;
   double leap_secs = get_utc_gps_offset(&utc_time, NULL);
   gps_time_t gps_time = utc_time;
-  unsafe_add_secs(&gps_time, -leap_secs);
+  add_secs(&gps_time, -leap_secs);
   return gps_time;
 }
 
