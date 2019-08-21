@@ -25,25 +25,19 @@ START_TEST(test_equality) {
       {.a = {567890, 1234}, .b = {567891 + 1e-13, 1234}, .c = false},
       {.a = {567890, 1234}, .b = {567891 + 1e-13, 1235}, .c = false},
       {.a = {567890, WN_UNKNOWN}, .b = {567890 + 1e-13, WN_UNKNOWN}, .c = true},
-      {.a = {567890, WN_UNKNOWN}, .b = {567891 + 1e-13, WN_UNKNOWN}, .c = false},
+      {.a = {567890, WN_UNKNOWN},
+       .b = {567891 + 1e-13, WN_UNKNOWN},
+       .c = false},
   };
-  for (size_t i = 0;
-       i < sizeof(testcases) / sizeof(struct testcase);
-       i++) {
+  for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     bool c = testcases[i].a == testcases[i].b;
-    fail_unless(c == testcases[i].c,
-                "equality test case %d failed, c = %d",
-                i,
-                c);
+    fail_unless(
+        c == testcases[i].c, "equality test case %d failed, c = %d", i, c);
   }
-  for (size_t i = 0;
-       i < sizeof(testcases) / sizeof(struct testcase);
-       i++) {
+  for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     bool c = testcases[i].a != testcases[i].b;
-    fail_unless(c == !testcases[i].c,
-                "inequality test case %d failed, c = %d",
-                i,
-                c);
+    fail_unless(
+        c == !testcases[i].c, "inequality test case %d failed, c = %d", i, c);
   }
 }
 END_TEST
@@ -70,22 +64,20 @@ START_TEST(test_greater_then) {
       {.a = {567891, 1234}, .b = {567890 + 1e-13, 1234}, .c = true},
       {.a = {567891, 1235}, .b = {567890 + 1e-13, 1234}, .c = true},
       {.a = {567890, 1234}, .b = {567891 + 1e-13, 1235}, .c = false},
-      {.a = {567890, WN_UNKNOWN}, .b = {567890 + 1e-13, WN_UNKNOWN}, .c = false},
-      {.a = {567890, WN_UNKNOWN}, .b = {567891 + 1e-13, WN_UNKNOWN}, .c = false},
+      {.a = {567890, WN_UNKNOWN},
+       .b = {567890 + 1e-13, WN_UNKNOWN},
+       .c = false},
+      {.a = {567890, WN_UNKNOWN},
+       .b = {567891 + 1e-13, WN_UNKNOWN},
+       .c = false},
       {.a = {567891, WN_UNKNOWN}, .b = {567890 + 1e-13, WN_UNKNOWN}, .c = true},
   };
-  for (size_t i = 0;
-       i < sizeof(testcases) / sizeof(struct testcase);
-       i++) {
+  for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     bool c = testcases[i].a > testcases[i].b;
-    fail_unless(c == testcases[i].c,
-                "greater then test case %d failed, c = %d",
-                i,
-                c);
+    fail_unless(
+        c == testcases[i].c, "greater then test case %d failed, c = %d", i, c);
   }
-  for (size_t i = 0;
-       i < sizeof(testcases) / sizeof(struct testcase);
-       i++) {
+  for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     bool c = testcases[i].a <= testcases[i].b;
     fail_unless(c == !testcases[i].c,
                 "less then or equal to test case %d failed, c = %d",
@@ -117,22 +109,20 @@ START_TEST(test_less_then) {
       {.a = {567891, 1234}, .b = {567890 + 1e-13, 1234}, .c = false},
       {.a = {567891, 1235}, .b = {567890 + 1e-13, 1234}, .c = false},
       {.a = {567890, 1234}, .b = {567891 + 1e-13, 1235}, .c = true},
-      {.a = {567890, WN_UNKNOWN}, .b = {567890 + 1e-13, WN_UNKNOWN}, .c = false},
+      {.a = {567890, WN_UNKNOWN},
+       .b = {567890 + 1e-13, WN_UNKNOWN},
+       .c = false},
       {.a = {567890, WN_UNKNOWN}, .b = {567891 + 1e-13, WN_UNKNOWN}, .c = true},
-      {.a = {567891, WN_UNKNOWN}, .b = {567890 + 1e-13, WN_UNKNOWN}, .c = false},
+      {.a = {567891, WN_UNKNOWN},
+       .b = {567890 + 1e-13, WN_UNKNOWN},
+       .c = false},
   };
-  for (size_t i = 0;
-       i < sizeof(testcases) / sizeof(struct testcase);
-       i++) {
+  for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     bool c = testcases[i].a < testcases[i].b;
-    fail_unless(c == testcases[i].c,
-                "less then test case %d failed, c = %d",
-                i,
-                c);
+    fail_unless(
+        c == testcases[i].c, "less then test case %d failed, c = %d", i, c);
   }
-  for (size_t i = 0;
-       i < sizeof(testcases) / sizeof(struct testcase);
-       i++) {
+  for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     bool c = testcases[i].a >= testcases[i].b;
     fail_unless(c == !testcases[i].c,
                 "greater then or equal to test case %d failed, c = %d",
@@ -159,9 +149,7 @@ START_TEST(test_subtract_times) {
       {.a = {567890, 1234}, .b = {567890, 1235}, .c = -604800},
   };
   const double tow_tol = 1e-10;
-  for (size_t i = 0;
-       i < sizeof(testcases) / sizeof(struct testcase);
-       i++) {
+  for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     double c = testcases[i].a - testcases[i].b;
     fail_unless(fabs(c - testcases[i].c) < tow_tol,
                 "subtract times test case %d failed, c = %.12f",
@@ -192,9 +180,7 @@ START_TEST(test_add_duration) {
       {.a = {604795, WN_UNKNOWN}, .b = 10, .c = {5, WN_UNKNOWN}},
       {.a = {5, WN_UNKNOWN}, .b = -10, .c = {604795, WN_UNKNOWN}},
   };
-  for (size_t i = 0;
-       i < sizeof(testcases) / sizeof(struct testcase);
-       i++) {
+  for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     gps_time_t c = testcases[i].a + testcases[i].b;
     fail_unless(c == testcases[i].c,
                 "add duration test case %d failed, c.wn = %d, c.tow = %.12f",
@@ -202,15 +188,14 @@ START_TEST(test_add_duration) {
                 c.wn,
                 c.tow);
   }
-  for (size_t i = 0;
-       i < sizeof(testcases) / sizeof(struct testcase);
-       i++) {
+  for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     gps_time_t c = testcases[i].a - -testcases[i].b;
-    fail_unless(c == testcases[i].c,
-                "subtract duration test case %d failed, c.wn = %d, c.tow = %.12f",
-                i,
-                c.wn,
-                c.tow);
+    fail_unless(
+        c == testcases[i].c,
+        "subtract duration test case %d failed, c.wn = %d, c.tow = %.12f",
+        i,
+        c.wn,
+        c.tow);
   }
 }
 END_TEST
@@ -236,24 +221,22 @@ START_TEST(test_assignment_add_duration) {
       {.a = {604795, WN_UNKNOWN}, .b = 10, .c = {5, WN_UNKNOWN}},
       {.a = {5, WN_UNKNOWN}, .b = -10, .c = {604795, WN_UNKNOWN}},
   };
-  for (size_t i = 0;
-       i < sizeof(testcases) / sizeof(struct testcase);
-       i++) {
+  for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     gps_time_t c = testcases[i].a;
     c += testcases[i].b;
-    fail_unless(c == testcases[i].c,
-                "assignment add duration test case %d failed, c.wn = %d, c.tow = %.12f",
-                i,
-                c.wn,
-                c.tow);
+    fail_unless(
+        c == testcases[i].c,
+        "assignment add duration test case %d failed, c.wn = %d, c.tow = %.12f",
+        i,
+        c.wn,
+        c.tow);
   }
-  for (size_t i = 0;
-       i < sizeof(testcases) / sizeof(struct testcase);
-       i++) {
+  for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     gps_time_t c = testcases[i].a;
     c -= -testcases[i].b;
     fail_unless(c == testcases[i].c,
-                "assignment subtract duration test case %d failed, c.wn = %d, c.tow = %.12f",
+                "assignment subtract duration test case %d failed, c.wn = %d, "
+                "c.tow = %.12f",
                 i,
                 c.wn,
                 c.tow);
@@ -271,52 +254,48 @@ START_TEST(test_increment_time) {
       {.a = {567890, WN_UNKNOWN}, .b = {567891, WN_UNKNOWN}},
       {.a = {604799, WN_UNKNOWN}, .b = {0, WN_UNKNOWN}},
   };
-  for (size_t i = 0;
-       i < sizeof(testcases) / sizeof(struct testcase);
-       i++) {
+  for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     gps_time_t b = testcases[i].a;
     gps_time_t c = ++b;
     fail_unless(b == testcases[i].b && c == testcases[i].b,
-                "prefix increment duration test case %d failed, b.wn = %d, b.tow = %.12f, c.wn = %d, c.tow = %.12f",
+                "prefix increment duration test case %d failed, b.wn = %d, "
+                "b.tow = %.12f, c.wn = %d, c.tow = %.12f",
                 i,
                 b.wn,
                 b.tow,
                 c.wn,
                 c.tow);
   }
-  for (size_t i = 0;
-       i < sizeof(testcases) / sizeof(struct testcase);
-       i++) {
+  for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     gps_time_t b = testcases[i].a;
     gps_time_t c = b++;
     fail_unless(b == testcases[i].b && c == testcases[i].a,
-                "postfix increment duration test case %d failed, b.wn = %d, b.tow = %.12f, c.wn = %d, c.tow = %.12f",
+                "postfix increment duration test case %d failed, b.wn = %d, "
+                "b.tow = %.12f, c.wn = %d, c.tow = %.12f",
                 i,
                 b.wn,
                 b.tow,
                 c.wn,
                 c.tow);
   }
-  for (size_t i = 0;
-       i < sizeof(testcases) / sizeof(struct testcase);
-       i++) {
+  for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     gps_time_t b = testcases[i].b;
     gps_time_t c = --b;
     fail_unless(b == testcases[i].a && c == testcases[i].a,
-                "prefix decrement duration test case %d failed, b.wn = %d, b.tow = %.12f, c.wn = %d, c.tow = %.12f",
+                "prefix decrement duration test case %d failed, b.wn = %d, "
+                "b.tow = %.12f, c.wn = %d, c.tow = %.12f",
                 i,
                 b.wn,
                 b.tow,
                 c.wn,
                 c.tow);
   }
-  for (size_t i = 0;
-       i < sizeof(testcases) / sizeof(struct testcase);
-       i++) {
+  for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     gps_time_t b = testcases[i].b;
     gps_time_t c = b--;
     fail_unless(b == testcases[i].a && c == testcases[i].b,
-                "postfix decrement duration test case %d failed, b.wn = %d, b.tow = %.12f, c.wn = %d, c.tow = %.12f",
+                "postfix decrement duration test case %d failed, b.wn = %d, "
+                "b.tow = %.12f, c.wn = %d, c.tow = %.12f",
                 i,
                 b.wn,
                 b.tow,

@@ -364,23 +364,19 @@ static inline gps_time_t operator-(const gps_time_t &a, double b) {
   return a + -b;
 }
 
-static inline gps_time_t& operator+=(gps_time_t &a, double b) {
+static inline gps_time_t &operator+=(gps_time_t &a, double b) {
   a = a + b;
   return a;
 }
 
-static inline gps_time_t& operator-=(gps_time_t &a, double b) {
+static inline gps_time_t &operator-=(gps_time_t &a, double b) {
   a = a - b;
   return a;
 }
 
-static inline gps_time_t& operator++(gps_time_t &a) {
-  return a += 1;
-}
+static inline gps_time_t &operator++(gps_time_t &a) { return a += 1; }
 
-static inline gps_time_t& operator--(gps_time_t &a) {
-  return a -= 1;
-}
+static inline gps_time_t &operator--(gps_time_t &a) { return a -= 1; }
 
 static inline gps_time_t operator++(gps_time_t &a, int) {
   gps_time_t temp = a;

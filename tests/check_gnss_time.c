@@ -78,12 +78,13 @@ START_TEST(test_unsafe_normalize_gps_time) {
     s16 wn = testcases[i].wn;
     unsafe_normalize_gps_time(&testcases[i]);
     double t_normalized = testcases[i].wn * WEEK_SECS + testcases[i].tow;
-    fail_unless(fabs(t_original - t_normalized) < tow_tol,
-                "unsafe_normalize_gps_time test case %d failed, t_original = %.12f, "
-                "t_normalized = %.12f",
-                i,
-                t_original,
-                t_normalized);
+    fail_unless(
+        fabs(t_original - t_normalized) < tow_tol,
+        "unsafe_normalize_gps_time test case %d failed, t_original = %.12f, "
+        "t_normalized = %.12f",
+        i,
+        t_original,
+        t_normalized);
   }
 }
 END_TEST
@@ -1098,13 +1099,11 @@ START_TEST(test_add_secs) {
       {.a = {604795, WN_UNKNOWN}, .b = 10, .c = {5, WN_UNKNOWN}},
       {.a = {5, WN_UNKNOWN}, .b = -10, .c = {604795, WN_UNKNOWN}},
   };
-  for (size_t i = 0;
-       i < sizeof(testcases) / sizeof(struct testcase);
-       i++) {
+  for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     gps_time_t c = testcases[i].a;
     add_secs(&c, testcases[i].b);
     fail_unless(c.wn == testcases[i].c.wn &&
-                  fabs(c.tow - testcases[i].c.tow) < FLOAT_EQUALITY_EPS,
+                    fabs(c.tow - testcases[i].c.tow) < FLOAT_EQUALITY_EPS,
                 "add_secs test case %d failed, c.wn = %d, c.tow = %.12f",
                 i,
                 c.wn,
@@ -1134,13 +1133,11 @@ START_TEST(test_unsafe_add_secs) {
       {.a = {604795, -1234}, .b = 10, .c = {5, -1233}},
       {.a = {5, -1233}, .b = -10, .c = {604795, -1234}},
   };
-  for (size_t i = 0;
-       i < sizeof(testcases) / sizeof(struct testcase);
-       i++) {
+  for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     gps_time_t c = testcases[i].a;
     unsafe_add_secs(&c, testcases[i].b);
     fail_unless(c.wn == testcases[i].c.wn &&
-                  fabs(c.tow - testcases[i].c.tow) < FLOAT_EQUALITY_EPS,
+                    fabs(c.tow - testcases[i].c.tow) < FLOAT_EQUALITY_EPS,
                 "unsafe_add_secs test case %d failed, c.wn = %d, c.tow = %.12f",
                 i,
                 c.wn,
