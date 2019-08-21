@@ -67,15 +67,17 @@ bool decode_iono_parameters(const u32 words[8], ionosphere_t *i);
 
 #ifdef __cplusplus
 } /* extern "C" */
-#endif
 
-#ifdef __cplusplus
 static inline bool operator==(const ionosphere_t &a, const ionosphere_t &b) {
   return double_approx_eq(gpsdifftime(&a.toa, &b.toa), 0.0) &&
          double_approx_eq(a.a0, b.a0) && double_approx_eq(a.a1, b.a1) &&
          double_approx_eq(a.a2, b.a2) && double_approx_eq(a.a3, b.a3) &&
          double_approx_eq(a.b0, b.b0) && double_approx_eq(a.b1, b.b1) &&
          double_approx_eq(a.b2, b.b2) && double_approx_eq(a.b3, b.b3);
+}
+
+static inline bool operator==(const ionosphere_t &a, const ionosphere_t &b) {
+  return !(a == b);
 }
 #endif
 
