@@ -20,8 +20,8 @@ START_TEST(test_gpsdifftime) {
       {.a = {444444.0, WN_UNKNOWN}, .b = {2222.0, WN_UNKNOWN}, .dt = -162578},
       {.a = {604578.0, 1000}, .b = {222.222, 1001}, .dt = -444.222},
       {.a = {604578.0, 1001}, .b = {222.222, 1000}, .dt = 1209155.778},
-      {.a = {567890.0, 1235}, .b = {567890.0, 1234}, .dt = 604800.0},
-      {.a = {567890.0, 1234}, .b = {567890.0, 1235}, .dt = -604800.0},
+      {.a = {567890.0, 1235}, .b = {567890.0, 1234}, .dt = WEEK_SECS},
+      {.a = {567890.0, 1234}, .b = {567890.0, 1235}, .dt = -WEEK_SECS},
   };
   const double tow_tol = 1e-10;
   for (size_t i = 0;
@@ -1087,17 +1087,17 @@ START_TEST(test_add_secs) {
       {.a = {567890, 1234}, .b = 0, .c = {567890, 1234}},
       {.a = {567890, 1234}, .b = 10, .c = {567900, 1234}},
       {.a = {567890, 1234}, .b = -10, .c = {567880, 1234}},
-      {.a = {567890, 1234}, .b = 604800, .c = {567890, 1235}},
-      {.a = {567890, 1235}, .b = -604800, .c = {567890, 1234}},
-      {.a = {604795, 1234}, .b = 10, .c = {5, 1235}},
-      {.a = {5, 1235}, .b = -10, .c = {604795, 1234}},
+      {.a = {567890, 1234}, .b = WEEK_SECS, .c = {567890, 1235}},
+      {.a = {567890, 1235}, .b = -WEEK_SECS, .c = {567890, 1234}},
+      {.a = {WEEK_SECS - 5, 1234}, .b = 10, .c = {5, 1235}},
+      {.a = {5, 1235}, .b = -10, .c = {WEEK_SECS - 5, 1234}},
       {.a = {567890, WN_UNKNOWN}, .b = 0, .c = {567890, WN_UNKNOWN}},
       {.a = {567890, WN_UNKNOWN}, .b = 10, .c = {567900, WN_UNKNOWN}},
       {.a = {567890, WN_UNKNOWN}, .b = -10, .c = {567880, WN_UNKNOWN}},
-      {.a = {567890, WN_UNKNOWN}, .b = 604800, .c = {567890, WN_UNKNOWN}},
-      {.a = {567890, WN_UNKNOWN}, .b = -604800, .c = {567890, WN_UNKNOWN}},
-      {.a = {604795, WN_UNKNOWN}, .b = 10, .c = {5, WN_UNKNOWN}},
-      {.a = {5, WN_UNKNOWN}, .b = -10, .c = {604795, WN_UNKNOWN}},
+      {.a = {567890, WN_UNKNOWN}, .b = WEEK_SECS, .c = {567890, WN_UNKNOWN}},
+      {.a = {567890, WN_UNKNOWN}, .b = -WEEK_SECS, .c = {567890, WN_UNKNOWN}},
+      {.a = {WEEK_SECS - 5, WN_UNKNOWN}, .b = 10, .c = {5, WN_UNKNOWN}},
+      {.a = {5, WN_UNKNOWN}, .b = -10, .c = {WEEK_SECS - 5, WN_UNKNOWN}},
   };
   for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     gps_time_t c = testcases[i].a;
@@ -1121,17 +1121,17 @@ START_TEST(test_unsafe_add_secs) {
       {.a = {567890, 1234}, .b = 0, .c = {567890, 1234}},
       {.a = {567890, 1234}, .b = 10, .c = {567900, 1234}},
       {.a = {567890, 1234}, .b = -10, .c = {567880, 1234}},
-      {.a = {567890, 1234}, .b = 604800, .c = {567890, 1235}},
-      {.a = {567890, 1235}, .b = -604800, .c = {567890, 1234}},
-      {.a = {604795, 1234}, .b = 10, .c = {5, 1235}},
-      {.a = {5, 1235}, .b = -10, .c = {604795, 1234}},
+      {.a = {567890, 1234}, .b = WEEK_SECS, .c = {567890, 1235}},
+      {.a = {567890, 1235}, .b = -WEEK_SECS, .c = {567890, 1234}},
+      {.a = {WEEK_SECS - 5, 1234}, .b = 10, .c = {5, 1235}},
+      {.a = {5, 1235}, .b = -10, .c = {WEEK_SECS - 5, 1234}},
       {.a = {567890, -1234}, .b = 0, .c = {567890, -1234}},
       {.a = {567890, -1234}, .b = 10, .c = {567900, -1234}},
       {.a = {567890, -1234}, .b = -10, .c = {567880, -1234}},
-      {.a = {567890, -1234}, .b = 604800, .c = {567890, -1233}},
-      {.a = {567890, -1233}, .b = -604800, .c = {567890, -1234}},
-      {.a = {604795, -1234}, .b = 10, .c = {5, -1233}},
-      {.a = {5, -1233}, .b = -10, .c = {604795, -1234}},
+      {.a = {567890, -1234}, .b = WEEK_SECS, .c = {567890, -1233}},
+      {.a = {567890, -1233}, .b = -WEEK_SECS, .c = {567890, -1234}},
+      {.a = {WEEK_SECS - 5, -1234}, .b = 10, .c = {5, -1233}},
+      {.a = {5, -1233}, .b = -10, .c = {WEEK_SECS - 5, -1234}},
   };
   for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     gps_time_t c = testcases[i].a;
@@ -1142,6 +1142,65 @@ START_TEST(test_unsafe_add_secs) {
                 i,
                 c.wn,
                 c.tow);
+  }
+}
+END_TEST
+
+START_TEST(test_gps_time_valid) {
+  struct testcase {
+    gps_time_t a;
+    bool b;
+  } testcases[] = {
+      {.a = {0, 1234}, .b = true},
+      {.a = {567890, 1234}, .b = true},
+      {.a = {WEEK_SECS - 1, 1234}, .b = true},
+      {.a = {WEEK_SECS, 1234}, .b = false},
+      {.a = {TOW_UNKNOWN, 1234}, .b = false},
+      {.a = {0, WN_UNKNOWN}, .b = false},
+      {.a = {567890, WN_UNKNOWN}, .b = false},
+      {.a = {TOW_UNKNOWN, WN_UNKNOWN}, .b = false},
+  };
+  for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
+    bool b = gps_time_valid(&testcases[i].a);
+    fail_unless(
+        b == testcases[i].b, "gps_time_valid test case %d failed, b = %d", i, b);
+  }
+}
+END_TEST
+
+START_TEST(test_gps_current_time_valid) {
+  struct testcase {
+    gps_time_t a;
+    bool b;
+  } testcases[] = {
+      {.a = {0, GPS_WEEK_REFERENCE}, .b = true},
+      {.a = {567890, GPS_WEEK_REFERENCE}, .b = true},
+      {.a = {WEEK_SECS - 1, GPS_WEEK_REFERENCE}, .b = true},
+      {.a = {WEEK_SECS, GPS_WEEK_REFERENCE}, .b = false},
+      {.a = {TOW_UNKNOWN, GPS_WEEK_REFERENCE}, .b = false},
+      {.a = {0, GPS_WEEK_REFERENCE - 1}, .b = false},
+      {.a = {567890, GPS_WEEK_REFERENCE - 1}, .b = false},
+      {.a = {WEEK_SECS - 1, GPS_WEEK_REFERENCE - 1}, .b = false},
+      {.a = {WEEK_SECS, GPS_WEEK_REFERENCE - 1}, .b = false},
+      {.a = {TOW_UNKNOWN, GPS_WEEK_REFERENCE - 1}, .b = false},
+      {.a = {0, GPS_MAX_WEEK}, .b = false},
+      {.a = {567890, GPS_MAX_WEEK}, .b = false},
+      {.a = {WEEK_SECS - 1, GPS_MAX_WEEK}, .b = false},
+      {.a = {WEEK_SECS, GPS_MAX_WEEK}, .b = false},
+      {.a = {TOW_UNKNOWN, GPS_MAX_WEEK}, .b = false},
+      {.a = {0, GPS_MAX_WEEK - 1}, .b = true},
+      {.a = {567890, GPS_MAX_WEEK - 1}, .b = true},
+      {.a = {WEEK_SECS - 1, GPS_MAX_WEEK - 1}, .b = true},
+      {.a = {WEEK_SECS, GPS_MAX_WEEK - 1}, .b = false},
+      {.a = {TOW_UNKNOWN, GPS_MAX_WEEK - 1}, .b = false},
+      {.a = {0, WN_UNKNOWN}, .b = false},
+      {.a = {567890, WN_UNKNOWN}, .b = false},
+      {.a = {TOW_UNKNOWN, WN_UNKNOWN}, .b = false},
+  };
+  for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
+    bool b = gps_current_time_valid(&testcases[i].a);
+    fail_unless(
+        b == testcases[i].b, "gps_current_time_valid test case %d failed, b = %d", i, b);
   }
 }
 END_TEST
@@ -1165,6 +1224,8 @@ Suite *gnss_time_test_suite(void) {
   tcase_add_test(tc_core, test_time_conversions);
   tcase_add_test(tc_core, test_add_secs);
   tcase_add_test(tc_core, test_unsafe_add_secs);
+  tcase_add_test(tc_core, test_gps_time_valid);
+  tcase_add_test(tc_core, test_gps_current_time_valid);
   suite_add_tcase(s, tc_core);
 
   return s;

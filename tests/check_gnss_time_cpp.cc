@@ -145,8 +145,8 @@ START_TEST(test_subtract_times) {
       {.a = {444444, WN_UNKNOWN}, .b = {2222, WN_UNKNOWN}, .c = -162578},
       {.a = {604578, 1000}, .b = {222.222, 1001}, .c = -444.222},
       {.a = {604578, 1001}, .b = {222.222, 1000}, .c = 1209155.778},
-      {.a = {567890, 1235}, .b = {567890, 1234}, .c = 604800},
-      {.a = {567890, 1234}, .b = {567890, 1235}, .c = -604800},
+      {.a = {567890, 1235}, .b = {567890, 1234}, .c = WEEK_SECS},
+      {.a = {567890, 1234}, .b = {567890, 1235}, .c = -WEEK_SECS},
   };
   const double tow_tol = 1e-10;
   for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
@@ -168,17 +168,17 @@ START_TEST(test_add_duration) {
       {.a = {567890, 1234}, .b = 0, .c = {567890, 1234}},
       {.a = {567890, 1234}, .b = 10, .c = {567900, 1234}},
       {.a = {567890, 1234}, .b = -10, .c = {567880, 1234}},
-      {.a = {567890, 1234}, .b = 604800, .c = {567890, 1235}},
-      {.a = {567890, 1235}, .b = -604800, .c = {567890, 1234}},
-      {.a = {604795, 1234}, .b = 10, .c = {5, 1235}},
-      {.a = {5, 1235}, .b = -10, .c = {604795, 1234}},
+      {.a = {567890, 1234}, .b = WEEK_SECS, .c = {567890, 1235}},
+      {.a = {567890, 1235}, .b = -WEEK_SECS, .c = {567890, 1234}},
+      {.a = {WEEK_SECS - 5, 1234}, .b = 10, .c = {5, 1235}},
+      {.a = {5, 1235}, .b = -10, .c = {WEEK_SECS - 5, 1234}},
       {.a = {567890, WN_UNKNOWN}, .b = 0, .c = {567890, WN_UNKNOWN}},
       {.a = {567890, WN_UNKNOWN}, .b = 10, .c = {567900, WN_UNKNOWN}},
       {.a = {567890, WN_UNKNOWN}, .b = -10, .c = {567880, WN_UNKNOWN}},
-      {.a = {567890, WN_UNKNOWN}, .b = 604800, .c = {567890, WN_UNKNOWN}},
-      {.a = {567890, WN_UNKNOWN}, .b = -604800, .c = {567890, WN_UNKNOWN}},
-      {.a = {604795, WN_UNKNOWN}, .b = 10, .c = {5, WN_UNKNOWN}},
-      {.a = {5, WN_UNKNOWN}, .b = -10, .c = {604795, WN_UNKNOWN}},
+      {.a = {567890, WN_UNKNOWN}, .b = WEEK_SECS, .c = {567890, WN_UNKNOWN}},
+      {.a = {567890, WN_UNKNOWN}, .b = -WEEK_SECS, .c = {567890, WN_UNKNOWN}},
+      {.a = {WEEK_SECS - 5, WN_UNKNOWN}, .b = 10, .c = {5, WN_UNKNOWN}},
+      {.a = {5, WN_UNKNOWN}, .b = -10, .c = {WEEK_SECS - 5, WN_UNKNOWN}},
   };
   for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     gps_time_t c = testcases[i].a + testcases[i].b;
@@ -209,17 +209,17 @@ START_TEST(test_assignment_add_duration) {
       {.a = {567890, 1234}, .b = 0, .c = {567890, 1234}},
       {.a = {567890, 1234}, .b = 10, .c = {567900, 1234}},
       {.a = {567890, 1234}, .b = -10, .c = {567880, 1234}},
-      {.a = {567890, 1234}, .b = 604800, .c = {567890, 1235}},
-      {.a = {567890, 1235}, .b = -604800, .c = {567890, 1234}},
-      {.a = {604795, 1234}, .b = 10, .c = {5, 1235}},
-      {.a = {5, 1235}, .b = -10, .c = {604795, 1234}},
+      {.a = {567890, 1234}, .b = WEEK_SECS, .c = {567890, 1235}},
+      {.a = {567890, 1235}, .b = -WEEK_SECS, .c = {567890, 1234}},
+      {.a = {WEEK_SECS - 5, 1234}, .b = 10, .c = {5, 1235}},
+      {.a = {5, 1235}, .b = -10, .c = {WEEK_SECS - 5, 1234}},
       {.a = {567890, WN_UNKNOWN}, .b = 0, .c = {567890, WN_UNKNOWN}},
       {.a = {567890, WN_UNKNOWN}, .b = 10, .c = {567900, WN_UNKNOWN}},
       {.a = {567890, WN_UNKNOWN}, .b = -10, .c = {567880, WN_UNKNOWN}},
-      {.a = {567890, WN_UNKNOWN}, .b = 604800, .c = {567890, WN_UNKNOWN}},
-      {.a = {567890, WN_UNKNOWN}, .b = -604800, .c = {567890, WN_UNKNOWN}},
-      {.a = {604795, WN_UNKNOWN}, .b = 10, .c = {5, WN_UNKNOWN}},
-      {.a = {5, WN_UNKNOWN}, .b = -10, .c = {604795, WN_UNKNOWN}},
+      {.a = {567890, WN_UNKNOWN}, .b = WEEK_SECS, .c = {567890, WN_UNKNOWN}},
+      {.a = {567890, WN_UNKNOWN}, .b = -WEEK_SECS, .c = {567890, WN_UNKNOWN}},
+      {.a = {WEEK_SECS - 5, WN_UNKNOWN}, .b = 10, .c = {5, WN_UNKNOWN}},
+      {.a = {5, WN_UNKNOWN}, .b = -10, .c = {WEEK_SECS - 5, WN_UNKNOWN}},
   };
   for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     gps_time_t c = testcases[i].a;
@@ -250,9 +250,9 @@ START_TEST(test_increment_time) {
     gps_time_t b;
   } testcases[] = {
       {.a = {567890, 1234}, .b = {567891, 1234}},
-      {.a = {604799, 1234}, .b = {0, 1235}},
+      {.a = {WEEK_SECS - 1, 1234}, .b = {0, 1235}},
       {.a = {567890, WN_UNKNOWN}, .b = {567891, WN_UNKNOWN}},
-      {.a = {604799, WN_UNKNOWN}, .b = {0, WN_UNKNOWN}},
+      {.a = {WEEK_SECS - 1, WN_UNKNOWN}, .b = {0, WN_UNKNOWN}},
   };
   for (size_t i = 0; i < sizeof(testcases) / sizeof(struct testcase); i++) {
     gps_time_t b = testcases[i].a;
