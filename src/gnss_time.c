@@ -61,7 +61,7 @@ bool gps_current_time_valid(const gps_time_t *t) {
  * \param t GPS time struct.
  */
 void normalize_gps_time(gps_time_t *t) {
-  assert(t->wn >= WN_UNKNOWN);
+  assert(t->wn == WN_UNKNOWN || t->wn > 0);
 
   if (t->wn == WN_UNKNOWN) {
     /* don't touch week number if it is unknown */
@@ -252,14 +252,11 @@ gps_time_t time2gps_t(const time_t t_unix) {
 bool gpstime_in_range(const gps_time_t *bgn,
                       const gps_time_t *end,
                       const gps_time_t *t) {
-  assert(bgn);
-  assert(bgn->tow != TOW_UNKNOWN);
-  assert(bgn->wn != WN_UNKNOWN);
-  assert(end);
-  assert(end->tow != TOW_UNKNOWN);
-  assert(end->wn != WN_UNKNOWN);
-  assert(t);
-  assert(t->tow != TOW_UNKNOWN);
+  assert(bgn->tow >= 0);
+  assert(bgn->wn >= 0);
+  assert(end->tow >= 0);
+  assert(end->wn >= 0);
+  assert(t->tow >= 0);
 
   double since_bgn_s = gpsdifftime(t, bgn);
   if (since_bgn_s < 0) {
@@ -280,6 +277,8 @@ bool gpstime_in_range(const gps_time_t *bgn,
  * \return The time difference in seconds between `beginning` and `end`.
  */
 double gpsdifftime(const gps_time_t *end, const gps_time_t *beginning) {
+  assert(beginning->wn == WN_UNKNOWN || beginning->wn > 0);
+  assert(end->wn == WN_UNKNOWN || end->wn > 0);
   double dt = end->tow - beginning->tow;
   if (end->wn == WN_UNKNOWN || beginning->wn == WN_UNKNOWN) {
     /* One or both of the week numbers is unspecified.  Assume times
@@ -313,6 +312,7 @@ void add_secs(gps_time_t *time, double secs) {
  * \param ref Reference GPS time
  */
 void gps_time_match_weeks(gps_time_t *t, const gps_time_t *ref) {
+  assert(ref->wn == WN_UNKNOWN || ref->wn > 0);
   if (ref->wn == WN_UNKNOWN) {
     return;
   }
