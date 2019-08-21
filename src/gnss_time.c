@@ -302,6 +302,17 @@ double gpsdifftime(const gps_time_t *end, const gps_time_t *beginning) {
  */
 void add_secs(gps_time_t *time, double secs) {
   time->tow += secs;
+  normalize_gps_time(time);
+}
+
+/** Add secs seconds to the GPS time.
+ * \param time The time to be modified.
+ * \param secs Number of seconds to add to the time
+ * Doesn't check for positive week number (since some applications pass in times
+ * before the start of GPS time in 1980).
+ */
+void unsafe_add_secs(gps_time_t *time, double secs) {
+  time->tow += secs;
   unsafe_normalize_gps_time(time);
 }
 
@@ -750,7 +761,7 @@ gps_time_t mjd2gps(double mjd) {
   utc_time.tow = (utc_days - utc_time.wn * WEEK_DAYS) * (double)DAY_SECS;
   double leap_secs = get_utc_gps_offset(&utc_time, NULL);
   gps_time_t gps_time = utc_time;
-  add_secs(&gps_time, -leap_secs);
+  unsafe_add_secs(&gps_time, -leap_secs);
   return gps_time;
 }
 

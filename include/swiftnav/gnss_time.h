@@ -266,6 +266,7 @@ bool gpstime_in_range(const gps_time_t *bgn,
                       const gps_time_t *t);
 double gpsdifftime(const gps_time_t *end, const gps_time_t *beginning);
 void add_secs(gps_time_t *time, double secs);
+void unsafe_add_secs(gps_time_t *time, double secs);
 void gps_time_match_weeks(gps_time_t *t, const gps_time_t *ref);
 u16 gps_adjust_week_cycle(u16 wn_raw, u16 wn_ref);
 u16 gps_adjust_week_cycle256(u16 wn_raw, u16 wn_ref);
