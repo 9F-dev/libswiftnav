@@ -14,11 +14,14 @@ START_TEST(test_gpsdifftime) {
   } testcases[] = {
       {.a = {567890.0, 1234}, .b = {567890.0, 1234}, .dt = 0},
       {.a = {567890.0, 1234}, .b = {0.0, 1234}, .dt = 567890},
+      {.a = {0.0, 1234}, .b = {567890.0, 1234}, .dt = -567890},
       {.a = {567890.0, WN_UNKNOWN}, .b = {0.0, 1234}, .dt = -36910},
       {.a = {222222.0, 2222}, .b = {2222.0, WN_UNKNOWN}, .dt = 220000},
       {.a = {444444.0, WN_UNKNOWN}, .b = {2222.0, WN_UNKNOWN}, .dt = -162578},
       {.a = {604578.0, 1000}, .b = {222.222, 1001}, .dt = -444.222},
       {.a = {604578.0, 1001}, .b = {222.222, 1000}, .dt = 1209155.778},
+      {.a = {567890.0, 1235}, .b = {567890.0, 1234}, .dt = 604800.0},
+      {.a = {567890.0, 1234}, .b = {567890.0, 1235}, .dt = -604800.0},
   };
   const double tow_tol = 1e-10;
   for (size_t i = 0;
@@ -56,6 +59,31 @@ START_TEST(test_normalize_gps_time) {
     }
     /* normalization must not touch unknown week number */
     fail_unless(wn != WN_UNKNOWN || testcases[i].wn == WN_UNKNOWN);
+  }
+}
+END_TEST
+
+START_TEST(test_unsafe_normalize_gps_time) {
+  gps_time_t testcases[] = {{0, 1234},
+                            {3 * DAY_SECS, 1234},
+                            {WEEK_SECS + DAY_SECS, 1234},
+                            {0 - DAY_SECS, 1234},
+                            {0, -1234},
+                            {3 * DAY_SECS, -1234},
+                            {WEEK_SECS + DAY_SECS, -1234},
+                            {0 - DAY_SECS, -1234}};
+  const double tow_tol = 1e-10;
+  for (size_t i = 0; i < sizeof(testcases) / sizeof(gps_time_t); i++) {
+    double t_original = testcases[i].wn * WEEK_SECS + testcases[i].tow;
+    s16 wn = testcases[i].wn;
+    unsafe_normalize_gps_time(&testcases[i]);
+    double t_normalized = testcases[i].wn * WEEK_SECS + testcases[i].tow;
+    fail_unless(fabs(t_original - t_normalized) < tow_tol,
+                "unsafe_normalize_gps_time test case %d failed, t_original = %.12f, "
+                "t_normalized = %.12f",
+                i,
+                t_original,
+                t_normalized);
   }
 }
 END_TEST
@@ -1049,12 +1077,85 @@ START_TEST(test_time_conversions) {
 }
 END_TEST
 
+START_TEST(test_add_secs) {
+  struct testcase {
+    gps_time_t a;
+    double b;
+    gps_time_t c;
+  } testcases[] = {
+      {.a = {567890, 1234}, .b = 0, .c = {567890, 1234}},
+      {.a = {567890, 1234}, .b = 10, .c = {567900, 1234}},
+      {.a = {567890, 1234}, .b = -10, .c = {567880, 1234}},
+      {.a = {567890, 1234}, .b = 604800, .c = {567890, 1235}},
+      {.a = {567890, 1235}, .b = -604800, .c = {567890, 1234}},
+      {.a = {604795, 1234}, .b = 10, .c = {5, 1235}},
+      {.a = {5, 1235}, .b = -10, .c = {604795, 1234}},
+      {.a = {567890, WN_UNKNOWN}, .b = 0, .c = {567890, WN_UNKNOWN}},
+      {.a = {567890, WN_UNKNOWN}, .b = 10, .c = {567900, WN_UNKNOWN}},
+      {.a = {567890, WN_UNKNOWN}, .b = -10, .c = {567880, WN_UNKNOWN}},
+      {.a = {567890, WN_UNKNOWN}, .b = 604800, .c = {567890, WN_UNKNOWN}},
+      {.a = {567890, WN_UNKNOWN}, .b = -604800, .c = {567890, WN_UNKNOWN}},
+      {.a = {604795, WN_UNKNOWN}, .b = 10, .c = {5, WN_UNKNOWN}},
+      {.a = {5, WN_UNKNOWN}, .b = -10, .c = {604795, WN_UNKNOWN}},
+  };
+  for (size_t i = 0;
+       i < sizeof(testcases) / sizeof(struct testcase);
+       i++) {
+    gps_time_t c = testcases[i].a;
+    add_secs(&c, testcases[i].b);
+    fail_unless(c.wn == testcases[i].c.wn &&
+                  fabs(c.tow - testcases[i].c.tow) < FLOAT_EQUALITY_EPS,
+                "add_secs test case %d failed, c.wn = %d, c.tow = %.12f",
+                i,
+                c.wn,
+                c.tow);
+  }
+}
+END_TEST
+
+START_TEST(test_unsafe_add_secs) {
+  struct testcase {
+    gps_time_t a;
+    double b;
+    gps_time_t c;
+  } testcases[] = {
+      {.a = {567890, 1234}, .b = 0, .c = {567890, 1234}},
+      {.a = {567890, 1234}, .b = 10, .c = {567900, 1234}},
+      {.a = {567890, 1234}, .b = -10, .c = {567880, 1234}},
+      {.a = {567890, 1234}, .b = 604800, .c = {567890, 1235}},
+      {.a = {567890, 1235}, .b = -604800, .c = {567890, 1234}},
+      {.a = {604795, 1234}, .b = 10, .c = {5, 1235}},
+      {.a = {5, 1235}, .b = -10, .c = {604795, 1234}},
+      {.a = {567890, -1234}, .b = 0, .c = {567890, -1234}},
+      {.a = {567890, -1234}, .b = 10, .c = {567900, -1234}},
+      {.a = {567890, -1234}, .b = -10, .c = {567880, -1234}},
+      {.a = {567890, -1234}, .b = 604800, .c = {567890, -1233}},
+      {.a = {567890, -1233}, .b = -604800, .c = {567890, -1234}},
+      {.a = {604795, -1234}, .b = 10, .c = {5, -1233}},
+      {.a = {5, -1233}, .b = -10, .c = {604795, -1234}},
+  };
+  for (size_t i = 0;
+       i < sizeof(testcases) / sizeof(struct testcase);
+       i++) {
+    gps_time_t c = testcases[i].a;
+    unsafe_add_secs(&c, testcases[i].b);
+    fail_unless(c.wn == testcases[i].c.wn &&
+                  fabs(c.tow - testcases[i].c.tow) < FLOAT_EQUALITY_EPS,
+                "unsafe_add_secs test case %d failed, c.wn = %d, c.tow = %.12f",
+                i,
+                c.wn,
+                c.tow);
+  }
+}
+END_TEST
+
 Suite *gnss_time_test_suite(void) {
   Suite *s = suite_create("Time handling");
 
   TCase *tc_core = tcase_create("Core");
   tcase_add_test(tc_core, test_gpsdifftime);
   tcase_add_test(tc_core, test_normalize_gps_time);
+  tcase_add_test(tc_core, test_unsafe_normalize_gps_time);
   tcase_add_test(tc_core, test_gps_time_match_weeks);
   tcase_add_test(tc_core, test_gps_adjust_week_cycle);
   tcase_add_test(tc_core, test_is_leap_year);
@@ -1065,6 +1166,8 @@ Suite *gnss_time_test_suite(void) {
   tcase_add_test(tc_core, test_gps2utc_time);
   tcase_add_test(tc_core, test_gps2utc_date);
   tcase_add_test(tc_core, test_time_conversions);
+  tcase_add_test(tc_core, test_add_secs);
+  tcase_add_test(tc_core, test_unsafe_add_secs);
   suite_add_tcase(s, tc_core);
 
   return s;
