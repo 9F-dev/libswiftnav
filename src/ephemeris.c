@@ -278,11 +278,12 @@ static s8 calc_sat_state_glo(const ephemeris_t *e,
  *
  * References:
  *   -# IS-GPS-200D, Section 20.3.3.3.3.1 and Table 20-IV
- *   -http://math.tut.fi/posgroup/korvenoja_piche_ion2000a.pdf which
+ *   - http://math.tut.fi/posgroup/korvenoja_piche_ion2000a.pdf which
  *    was used to implement the acceleration terms, note however there are
  *    several typos.  In particular in the equation for z_s'' the inc ** 2
  *    term should be inc' ** 2.  And for x_s'' the omega' x_p term should
  *    be omega' x_p'.  Each of these can be confirmed by checking units.
+ *   - https://www.gps.gov/technical/icwg/meetings/2019/09/GPS-SV-velocity-and-acceleration.pdf
  *
  * \param e Pointer to an ephemeris structure for the satellite of interest
  * \param t GPS time at which to calculate the satellite state
@@ -359,7 +360,7 @@ static s8 calc_sat_state_kepler(const ephemeris_t *e,
   /* Corrected mean anomaly in radians. */
   double ma = k->m0 + ma_dot * dt;
 
-  /* Iteratively solve for the Eccentric Anomaly
+  /* Iteratively solve for the Eccentric Anomaly via Netwon iteration
    * (from Keith Alter and David Johnston) */
   double ea = ma; /* Starting value for E. */
   double ea_old;
@@ -368,7 +369,7 @@ static s8 calc_sat_state_kepler(const ephemeris_t *e,
   u8 count = 0;
 
   /* TODO: Implement convergence test using integer difference of doubles,
-   * http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm
+   * https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
    */
   do {
     ea_old = ea;
@@ -380,13 +381,18 @@ static s8 calc_sat_state_kepler(const ephemeris_t *e,
     }
   } while (fabs(ea - ea_old) > 1.0E-14);
 
+  temp = 1.0 - ecc * cos(ea);
   double ea_dot = ma_dot / temp;
   double ea_acc = ea_dot * ea_dot * ecc * sin(ea) / temp;
 
   /* Begin calc for True Anomaly and Argument of Latitude */
   double temp2 = sqrt(1.0 - ecc * ecc);
+  /* Calculate True Anomaly */
+  /* Uses equation 3 from Thompson, Lewis & Brown (2019) */
+  double ta = 2 * atan(sqrt((1 + ecc) / (1 - ecc)) * tan(ea / 2));
   /* Argument of Latitude = True Anomaly + Argument of Perigee. */
-  double al = atan2(temp2 * sin(ea), cos(ea) - ecc) + k->w;
+  double al = ta + k->w;
+  //double al = atan2(temp2 * sin(ea), cos(ea) - ecc) + k->w;
   double al_dot = temp2 * ea_dot / temp;
   double al_acc = 2 * al_dot * ea_acc / ea_dot;
   double al_dot_sqr = al_dot * al_dot;
@@ -417,10 +423,6 @@ static s8 calc_sat_state_kepler(const ephemeris_t *e,
   double r_acc =
       a * ecc * ea_dot * ea_dot * cos(ea) + a * ecc * ea_acc * sin(ea) + dr_acc;
 
-  /* Relativistic correction term to satellite clock using x.v = r . r_dot. */
-  double einstein = -2.0 * r * r_dot / GPS_C / GPS_C;
-  *clock_err += einstein;
-
   /* Calculate the inclination correction */
   double dinc = (k->cis * sin2al + k->cic * cos2al);
   double dinc_dot = 2 * al_dot * (k->cis * cos2al - k->cic * sin2al);
@@ -446,14 +448,17 @@ static s8 calc_sat_state_kepler(const ephemeris_t *e,
   /* Corrected longitude of ascenting node. */
   double om_dot;
   double om;
+  double er;
   switch (sid_to_constellation(e->sid)) {
     case CONSTELLATION_GPS:
     case CONSTELLATION_QZS:
     case CONSTELLATION_GAL:
+      er = GPS_OMEGAE_DOT;
       om_dot = k->omegadot - GPS_OMEGAE_DOT;
       om = k->omega0 + dt * om_dot - GPS_OMEGAE_DOT * e->toe.tow;
       break;
     case CONSTELLATION_BDS:
+      er = BDS2_OMEGAE_DOT;
       om_dot = k->omegadot - BDS2_OMEGAE_DOT;
       om = k->omega0 + dt * om_dot -
            BDS2_OMEGAE_DOT * (e->toe.tow - BDS_SECOND_TO_GPS_SECOND);
@@ -481,19 +486,23 @@ static s8 calc_sat_state_kepler(const ephemeris_t *e,
   vel[1] = om_dot * pos[0] + x_dot * sin(om) + temp * cos(om);
   vel[2] = y * cos(inc) * inc_dot + y_dot * sin(inc);
 
-  /* Note that there is a typo in the reference used for this equation.
-     The reference uses  omega' * x which should be  omeaga' * x'. */
-  double acc_common_1 = vel[2] * inc_dot - om_dot * x_dot +
-                        y * inc_acc * sin(inc) - y_acc * cos(inc) +
-                        inc_dot * y_dot * sin(inc);
-  double acc_common_2 =
-      x_acc + y * om_dot * inc_dot * sin(inc) - om_dot * y_dot * cos(inc);
-  acc[0] = -om_dot * vel[1] + sin(om) * acc_common_1 + cos(om) * acc_common_2;
-  acc[1] = om_dot * vel[0] - cos(om) * acc_common_1 + sin(om) * acc_common_2;
-  /* Note that there is a typo in the reference used for this equation.
-     The reference uses -y * inc^2 which should be -y * inc'^2. */
-  acc[2] = sin(inc) * (-y * inc_dot * inc_dot + y_acc) +
-           cos(inc) * (y * inc_acc + 2 * inc_dot * y_dot);
+  /* Compute the satellite's acceleration in Earth-Centered Earth-Fixed
+   * coordiates. */
+  /* Uses equation 9 from Thompson, Lewis & Brown (2019) */
+  double f = -(3.0 / 2.0) * EGM_2008_J02 * (gm / (r * r)) * (WGS84_A / r) * (WGS84_A / r);
+  temp = -gm / (r * r * r);
+  temp2 = 5 * (pos[2] / r) * (pos[2] / r);
+  acc[0] = temp * pos[0] + f * (1 - temp2) * (pos[0] / r) + 2 * vel[1] * er + pos[0] * er * er;
+  acc[1] = temp * pos[1] + f * (1 - temp2) * (pos[1] / r) - 2 * vel[0] * er + pos[1] * er * er;
+  acc[2] = temp * pos[2] + f * (3 - temp2) * (pos[2] / r);
+
+  /* Relativistic correction term to satellite clock */
+  /* Uses equation 20 & 21 from Thompson, Lewis & Brown (2019) */
+  double einstein = -2 * vector_dot(3, pos, vel) / (GPS_C * GPS_C);
+  temp = vel[0] * vel[0] + vel[1] * vel[1] + vel[2] * vel[2];
+  double einstein_dot = (-2.0 / (GPS_C * GPS_C)) * (temp + vector_dot(3, pos, acc));
+  *clock_err += einstein;
+  *clock_rate_err += einstein_dot;
 
   *iode = k->iode;
 

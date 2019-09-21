@@ -45,6 +45,37 @@ static const ephemeris_t gps_eph = {
                .iodc = 2,
                .iode = 2}};
 
+  /** From table 4 in Thompson, Lewis & Brown (2019) */
+  static const ephemeris_t gps_eph2 = {
+    .sid = {.code = CODE_GPS_L1CA, .sat = 11},
+    .toe = {.wn = 1983, .tow = 0},
+    .ura = 2.0,
+    .fit_interval = 14400,
+    .valid = 1,
+    .health_bits = 0,
+    .kepler = {.tgd.gps_s = {5.122274160385132E-9, 0.0},
+               .crc = 0.293218750000E+03,
+               .crs = -0.965625000000E+01,
+               .cuc = -0.379979610443E-06,
+               .cus = 0.277347862720E-05,
+               .cic = 0.199303030968E-06,
+               .cis = 0.173225998878E-06,
+               .dn = 0.583845748090E-08,
+               .m0 = -0.286954703389E+01,
+               .ecc = 0.167867515702E-01,
+               .sqrta = 0.515375480270E+04,
+               .omega0 = -0.657960408566E+00,
+               .omegadot = -0.868929051526E-08,
+               .w = 0.173129682312E+01,
+               .inc = 0.903782727230E+00,
+               .inc_dot = 0.789318592573E-10,
+               .af0 = 2.5494489818811417E-5,
+               .af1 = 1.2505552149377763E-12,
+               .af2 = 0.0,
+               .toc = {.wn = 1983, .tow = 0},
+               .iodc = 2,
+               .iode = 2}};
+
 /* GPS almanac for tests.
  * See scenario ME-45. */
 static const almanac_t gps_alm = {.sid = {.code = CODE_GPS_L1CA, .sat = 1},
@@ -123,7 +154,7 @@ START_TEST(test_ephemeris_almanac_divergence) {
     /* Almanac vs. diverged ephemeris comparison. */
 
     /* Compute distance [m] */
-    d = vector_distance(3, alm_sat_pos, div_sat_pos);
+    d = fabs(vector_distance(3, alm_sat_pos, div_sat_pos));
 
     fail_unless(d <= VALID_ALM_ACCURACY,
                 "Almanac vs. diverging  check failed: \n"
@@ -714,9 +745,48 @@ START_TEST(test_bds_iode) {
   u32 our_IODE = get_ephemeris_iod_or_iodcrc(&bds_eph);
   u32 BNC_IODE = 14700972;
   fail_unless(our_IODE == BNC_IODE, "test_bds_iode test failed");
-
-  END_TEST
 }
+END_TEST
+
+START_TEST(test_gps_eph) {
+  double d;
+  double sat_pos[3];
+  double sat_vel[3];
+  double sat_acc[3];
+  double clock_err;
+  double clock_rate_err;
+  u8 iode;
+  u16 iodc;
+
+  // TODO also test clocks
+  gps_time_t t = {.wn = 1983, .tow = 2100};
+  bool calc_eph_ok =
+      (0 ==
+       calc_sat_state_n(&gps_eph2, &t, sat_pos, sat_vel, sat_acc, &clock_err,
+                        &clock_rate_err, &iodc, &iode));
+  fail_unless(calc_eph_ok, "Failure computing sat state! \n");
+
+  fail_unless(iode == 2);
+  fail_unless(iodc == 2);
+
+  double truth_pos[3] = {3166192.017, -21511945.818, -15899623.697};
+  d = fabs(vector_distance(3, sat_pos, truth_pos));
+  printf("result %f %f %f = %f\n", sat_pos[0], sat_pos[1], sat_pos[2], d);
+  //fail_unless(d <= 0.001);
+
+
+  double truth_vel[3] = {1533.973749, -1209.904136, 2000.871636};
+  d = fabs(vector_distance(3, sat_vel, truth_vel));
+  printf("result %f %f %f = %f\n", sat_vel[0], sat_vel[1], sat_vel[2], d);
+  //fail_unless(d <= 0.001);
+
+
+  double truth_acc[3] = {-0.224186, 0.100579, 0.324295};
+  d = fabs(vector_distance(3, sat_acc, truth_acc));
+  printf("result %f %f %f = %f\n", sat_acc[0], sat_acc[1], sat_acc[2], d);
+  //fail_unless(d <= 0.001);
+}
+END_TEST
 
 Suite *ephemeris_suite(void) {
   Suite *s = suite_create("Ephemeris");
@@ -727,6 +797,7 @@ Suite *ephemeris_suite(void) {
   tcase_add_test(tc_core, test_ephemeris_health);
   tcase_add_test(tc_core, test_6bit_health_word);
   tcase_add_test(tc_core, test_bds_iode);
+  tcase_add_test(tc_core, test_gps_eph);
   suite_add_tcase(s, tc_core);
 
   return s;

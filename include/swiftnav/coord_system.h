@@ -58,6 +58,9 @@ extern "C" {
 #define WGS84_J02 1.082629821313e-3
 /* \} */
 
+/** Second Degree Zonal Harmonic from EGM-2008 */
+#define EGM_2008_J02 0.0010826262
+
 /* \} */
 
 void llhrad2deg(const double llh_rad[3], double llh_deg[3]);
