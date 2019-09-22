@@ -385,15 +385,13 @@ static s8 calc_sat_state_kepler(const ephemeris_t *e,
   double ea_dot = ma_dot / temp;
   double ea_acc = ea_dot * ea_dot * ecc * sin(ea) / temp;
 
-  /* Begin calc for True Anomaly and Argument of Latitude */
-  double temp2 = sqrt(1.0 - ecc * ecc);
   /* Calculate True Anomaly */
   /* Uses equation 3 from Thompson, Lewis & Brown (2019) */
   double ta = 2 * atan(sqrt((1 + ecc) / (1 - ecc)) * tan(ea / 2));
   /* Argument of Latitude = True Anomaly + Argument of Perigee. */
   double al = ta + k->w;
   //double al = atan2(temp2 * sin(ea), cos(ea) - ecc) + k->w;
-  double al_dot = temp2 * ea_dot / temp;
+  double al_dot = sqrt(1.0 - ecc * ecc) * ea_dot / temp;
   double al_acc = 2 * al_dot * ea_acc / ea_dot;
   double al_dot_sqr = al_dot * al_dot;
 
@@ -412,26 +410,24 @@ static s8 calc_sat_state_kepler(const ephemeris_t *e,
   double cal_acc = al_acc + dal_acc;
 
   /* Calculate the radius correction */
-  double dr = (k->crs * sin2al + k->crc * cos2al);
+  double dr = k->crs * sin2al + k->crc * cos2al;
   double dr_dot = 2 * al_dot * (k->crs * cos2al - k->crc * sin2al);
   double dr_acc = 4 * al_dot_sqr * dr + al_acc / al_dot * dr_dot;
 
   /* Calculate corrected radius based on argument of latitude. */
-  double r = a * temp + k->crc * cos2al + k->crs * sin2al;
-  double r_dot = a * ecc * sin(ea) * ea_dot +
-                 2.0 * al_dot * (k->crs * cos2al - k->crc * sin2al);
+  double r = a * temp + dr;
+  double r_dot = a * ecc * sin(ea) * ea_dot + dr_dot;
   double r_acc =
       a * ecc * ea_dot * ea_dot * cos(ea) + a * ecc * ea_acc * sin(ea) + dr_acc;
 
   /* Calculate the inclination correction */
-  double dinc = (k->cis * sin2al + k->cic * cos2al);
+  double dinc = k->cis * sin2al + k->cic * cos2al;
   double dinc_dot = 2 * al_dot * (k->cis * cos2al - k->cic * sin2al);
   double dinc_acc = -4 * al_dot_sqr * dinc + al_acc / al_dot * dinc_dot;
 
   /* Calculate inclination based on argument of latitude. */
-  double inc = k->inc + k->inc_dot * dt + k->cic * cos2al + k->cis * sin2al;
-  double inc_dot =
-      k->inc_dot + 2.0 * al_dot * (k->cis * cos2al - k->cic * sin2al);
+  double inc = k->inc + k->inc_dot * dt + dinc;
+  double inc_dot = k->inc_dot + dinc_dot;
   double inc_acc = dinc_acc;
 
   /* Calculate position and velocity in orbital plane. */
@@ -491,7 +487,7 @@ static s8 calc_sat_state_kepler(const ephemeris_t *e,
   /* Uses equation 9 from Thompson, Lewis & Brown (2019) */
   double f = -(3.0 / 2.0) * EGM_2008_J02 * (gm / (r * r)) * (WGS84_A / r) * (WGS84_A / r);
   temp = -gm / (r * r * r);
-  temp2 = 5 * (pos[2] / r) * (pos[2] / r);
+  double temp2 = 5 * (pos[2] / r) * (pos[2] / r);
   acc[0] = temp * pos[0] + f * (1 - temp2) * (pos[0] / r) + 2 * vel[1] * er + pos[0] * er * er;
   acc[1] = temp * pos[1] + f * (1 - temp2) * (pos[1] / r) - 2 * vel[0] * er + pos[1] * er * er;
   acc[2] = temp * pos[2] + f * (3 - temp2) * (pos[2] / r);
