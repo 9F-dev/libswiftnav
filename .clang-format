@@ -6,4 +6,5 @@ BasedOnStyle:  Google
 Standard:      Cpp11
 BinPackParameters: false
 BinPackArguments: false 
+CommentPragmas:  '^\\.+'
 ...
