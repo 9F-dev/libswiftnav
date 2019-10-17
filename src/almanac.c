@@ -185,7 +185,7 @@ s8 calc_sat_state_almanac(const almanac_t *a,
 /** Calculate the azimuth and elevation of a satellite from a reference
  * position given the satellite almanac.
  *
- * \param a  Pointer to an almanac structure for the satellite of interest.
+ * \param a    Pointer to an almanac structure for the satellite of interest.
  * \param t    GPS time at which to calculate the az/el.
  * \param ref  ECEF coordinates of the reference point from which the azimuth
  *             and elevation is to be determined, passed as [X, Y, Z], all in
@@ -217,24 +217,49 @@ s8 calc_sat_az_el_almanac(const almanac_t *a,
 /** Calculate the Doppler shift of a satellite as observed at a reference
  * position given the satellite almanac.
  *
- * \param a  Pointer to an almanac structure for the satellite of interest.
- * \param t    GPS time at which to calculate the az/el.
- * \param ref  ECEF coordinates of the reference point from which the
- *             Doppler is to be determined, passed as [X, Y, Z], all in
- *             meters.
+ * \param a       Pointer to an almanac structure for the satellite of interest.
+ * \param t       GPS time at which to calculate the az/el.
+ * \param ref     ECEF coordinates of the reference point from which the
+ *                Doppler is to be determined, passed as [X, Y, Z], all in
+ *                meters.
  * \param doppler The Doppler shift [Hz].
  * \return  0 on success,
  *         -1 if almanac is not valid or too old
  */
 s8 calc_sat_doppler_almanac(const almanac_t *a,
                             const gps_time_t *t,
-                            const double ref[3],
+                            const double ref_pos[3],
+                            double *doppler) {
+  double zero_velocity[3] = {0, 0, 0};
+  return calc_sat_doppler_alm_vel(a, t, ref_pos, zero_velocity, doppler);
+}
+
+/** Calculate the Doppler shift of a satellite as observed at a reference
+ * position given the satellite almanac.
+ *
+ * \param a        Pointer to an almanac structure for the satellite of interest.
+ * \param t        GPS time at which to calculate the az/el.
+ * \param ref_pos  ECEF coordinates of the reference point from which the
+ *                 Doppler is to be determined, passed as [X, Y, Z], all in
+ *                 meters.
+ * \param ref_vel  ECEF velocity of the reference point from which the
+ *                 Doppler is to be determined, passed as [X, Y, Z], all in
+ *                 meters per second.
+ * \param doppler  The Doppler shift [Hz].
+ * \return  0 on success,
+ *         -1 if almanac is not valid or too old
+ */
+s8 calc_sat_doppler_alm_vel(const almanac_t *a,
+                            const gps_time_t *t,
+                            const double ref_pos[3],
+                            const double ref_vel[3],
                             double *doppler) {
   double sat_pos[3];
   double sat_vel[3];
   double sat_acc[3];
   double clock_err, clock_rate_err;
-  double vec_ref_sat[3];
+  double vec_pos_ref_sat[3];
+  double vec_vel_ref_sat[3];
 
   s8 ret = calc_sat_state_almanac(
       a, t, sat_pos, sat_vel, sat_acc, &clock_err, &clock_rate_err);
@@ -243,12 +268,14 @@ s8 calc_sat_doppler_almanac(const almanac_t *a,
   }
 
   /* Find the vector from the reference position to the satellite. */
-  vector_subtract(3, sat_pos, ref, vec_ref_sat);
+  vector_subtract(3, sat_pos, ref_pos, vec_pos_ref_sat);
+  /* Find the relative velocity vector between reference and satellite. */
+  vector_subtract(3, sat_vel, ref_vel, vec_vel_ref_sat);
 
-  /* Find the satellite velocity projected on the line of sight vector from the
+  /* Find the relative velocity projected on the line of sight vector from the
    * reference position to the satellite. */
-  double radial_velocity =
-      vector_dot(3, vec_ref_sat, sat_vel) / vector_norm(3, vec_ref_sat);
+  double radial_velocity = vector_dot(3, vec_pos_ref_sat, vec_vel_ref_sat) /
+                           vector_norm(3, vec_pos_ref_sat);
 
   /* Return the Doppler shift. */
   *doppler = sid_to_carr_freq(a->sid) * radial_velocity / GPS_C;

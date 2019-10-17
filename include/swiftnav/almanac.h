@@ -174,7 +174,12 @@ s8 calc_sat_az_el_almanac(const almanac_t *a,
                           double *el);
 s8 calc_sat_doppler_almanac(const almanac_t *a,
                             const gps_time_t *t,
-                            const double ref[3],
+                            const double ref_pos[3],
+                            double *doppler);
+s8 calc_sat_doppler_alm_vel(const almanac_t *a,
+                            const gps_time_t *t,
+                            const double ref_pos[3],
+                            const double ref_vel[3],
                             double *doppler);
 
 u8 almanac_valid(const almanac_t *a, const gps_time_t *t);
