@@ -1478,6 +1478,269 @@ void decode_gal_ephemeris(const u8 page[5][GAL_INAV_CONTENT_BYTE],
   gps_time_match_weeks(&kep->toc, &t);
 }
 
+typedef struct glo_string {
+  u8 bits[3];
+} glo_string_t;
+
+/** Extract a word of n_bits length (n_bits <= 32) at position bit_index into
+ * the subframe. Refer to bit index to Table 4.6 and 4.11 in GLO ICD 5.1 (pg.
+ * 34)
+ * \param string pointer to GLO nav string to be parsed
+ * \param bit_index number of bit the extract process start with. Range [1..85]
+ * \param n_bits how many bits should be extracted [1..32]
+ * \return word extracted from navigation string
+ */
+u32 extract_word_glo(const glo_string_t *string, u16 bit_index, u8 n_bits) {
+  assert(bit_index);
+  assert(bit_index <= GLO_STR_LEN);
+
+  assert(n_bits);
+  assert(n_bits <= 32);
+
+  /* Extract a word of n_bits length (n_bits <= 32) at position bit_index into
+   * the GLO string.*/
+  bit_index--;
+  u32 word = 0;
+  u8 bix_hi = bit_index >> 5;
+  u8 bix_lo = bit_index & 0x1F;
+  if (bix_lo + n_bits <= 32) {
+    word = string->bits[bix_hi] >> bix_lo;
+    word &= (0xffffffff << (32 - n_bits)) >> (32 - n_bits);
+  } else {
+    u8 s = 32 - bix_lo;
+    word = extract_word_glo(string, bit_index + 1, s) |
+           extract_word_glo(string, bit_index + 1 + s, n_bits - s) << s;
+  }
+
+  return word;
+}
+
+/** Decode position component of the ephemeris data (X/Y/Z)
+ * \param n GLO nav message decode state struct
+ * \return The decoded position component [m]
+ */
+static double decode_position_component(const glo_string_t *string) {
+  double pos_m = extract_word_glo(string, 9, 26) * C_1_2P11 * 1000.0;
+  u8 sign = extract_word_glo(string, 9 + 26, 1);
+  if (sign) {
+    pos_m *= -1;
+  }
+  return pos_m;
+}
+
+static int decode_glo_string_1(const glo_string_t *string, ephemeris_t *eph,
+glo_time_t *tk) {
+  double pos_m = decode_position_component(string); /* extract x */
+  if ((pos_m < -GLO_POS_MAX_M) || (GLO_POS_MAX_M < pos_m)) {
+    return -1;
+  }
+  eph->glo.pos[0] = pos_m;
+
+  double vel_m_s = decode_velocity_component(string); /* extract Vx */
+  if ((vel_m_s < -GLO_VEL_MAX_M_S) || (GLO_VEL_MAX_M_S < vel_m_s)) {
+    return -1;
+  }
+  eph->glo.vel[0] = vel_m_s;
+
+  double acc_m_s2 = decode_acceleration_component(string); /* extract Ax */
+  if ((acc_m_s2 < -GLO_ACC_MAX_M_S2) || (GLO_ACC_MAX_M_S2 < acc_m_s2)) {
+    return -1;
+  }
+  eph->glo.acc[0] = acc_m_s2;
+
+  /* extract tk */
+  tk->h = (u8)extract_word_glo(string, 72, 5);
+  if (tk->h > GLO_TK_HOURS_MAX) {
+    return -1;
+  }
+  tk->m = (u8)extract_word_glo(string, 66, 6);
+  if (tk->m > GLO_TK_MINS_MAX) {
+    return -1;
+  }
+  tk->s = extract_word_glo(string, 65, 1) ? MINUTE_SECS / 2 : 0.0;
+
+  /* extract P1 */
+  u32 p1 = extract_word_glo(string, 77, 2);
+  eph->fit_interval = compute_ephe_fit_interval(string, p1);
+
+  return 0;
+}
+
+static int decode_glo_string_2(const glo_string_t *string, ephemeris_t *eph,
+glo_time_t *toe) {
+  double pos_m = decode_position_component(string); /* extract y */
+  if ((pos_m < -GLO_POS_MAX_M) || (GLO_POS_MAX_M < pos_m)) {
+    return -1;
+  }
+  eph->glo.pos[1] = pos_m;
+
+  double vel_m_s = decode_velocity_component(string); /* extract Vy */
+  if ((vel_m_s < -GLO_VEL_MAX_M_S) || (GLO_VEL_MAX_M_S < vel_m_s)) {
+    return -1;
+  }
+  eph->glo.vel[1] = vel_m_s;
+
+  double acc_m_s2 = decode_acceleration_component(string); /* extract Ay */
+  if ((acc_m_s2 < -GLO_ACC_MAX_M_S2) || (GLO_ACC_MAX_M_S2 < acc_m_s2)) {
+    return -1;
+  }
+  eph->glo.acc[1] = acc_m_s2;
+
+  /* extract MSB of B (if the bit is 0 the SV is OK ) */
+  eph->health_bits |= extract_word_glo(string, 80, 1);
+
+  u32 tb_s = extract_word_glo(string, 70, 7) * 15 * MINUTE_SECS;
+  if ((tb_s < GLO_TB_MIN_S) || (GLO_TB_MAX_S < tb_s)) {
+    return -1;
+  }
+  toe->h = tb_s / HOUR_SECS;
+  toe->m = (tb_s - toe->h * HOUR_SECS) / MINUTE_SECS;
+  toe->s = tb_s - (toe->h * HOUR_SECS) - (toe->m * MINUTE_SECS);
+  eph->glo.iod = tb_s & 0x7f; /* 7 LSB of Tb as IOD */
+
+  return 0;
+}
+
+static int decode_glo_string_3(const glo_string_t *string, ephemeris_t *eph,
+glo_time_t *toe) {
+  double pos_m = decode_position_component(string); /* extract z */
+  if ((pos_m < -GLO_POS_MAX_M) || (GLO_POS_MAX_M < pos_m)) {
+    return -1;
+  }
+  eph->glo.pos[2] = pos_m;
+
+  double vel_m_s = decode_velocity_component(string); /* extract Vz */
+  if ((vel_m_s < -GLO_VEL_MAX_M_S) || (GLO_VEL_MAX_M_S < vel_m_s)) {
+    return -1;
+  }
+  eph->glo.vel[2] = vel_m_s;
+
+  double acc_m_s2 = decode_acceleration_component(string); /* extract Az */
+  if ((acc_m_s2 < -GLO_ACC_MAX_M_S2) || (GLO_ACC_MAX_M_S2 < acc_m_s2)) {
+    return -1;
+  }
+  eph->glo.acc[2] = acc_m_s2;
+
+  /* extract gamma */
+  u32 ret = extract_word_glo(string, 69, 10);
+  u8 sign = extract_word_glo(string, 69 + 10, 1);
+  if (sign) {
+    ret *= -1;
+  }
+  double gamma = (s32)ret * C_1_2P40;
+  if ((gamma < -GLO_GAMMA_MAX) || (GLO_GAMMA_MAX < gamma)) {
+    return -1;
+  }
+  eph->glo.gamma = gamma;
+  /* extract l, if it is 0 the SV is OK, so OR it with B */
+  eph->health_bits |= extract_word_glo(string, 65, 1);
+
+  return 0;
+}
+
+static int decode_glo_string_4(const glo_string_t *string, ephemeris_t *eph,
+glo_time_t *tk, glo_time_t *toe, u8 *age_of_data_days) {
+  /* extract tau */
+  u32 ret = extract_word_glo(string, 59, 21);
+  u8 sign = extract_word_glo(string, 59 + 21, 1);
+  if (sign) {
+    ret *= -1;
+  }
+  double tau_s = (s32)ret * C_1_2P30;
+  if ((tau_s < -GLO_TAU_MAX_S) || (GLO_TAU_MAX_S < tau_s)) {
+    return -1;
+  }
+  eph->glo.tau = tau_s;
+
+  /* extract d_tau */
+  ret = extract_word_glo(string, 54, 4);
+  sign = extract_word_glo(string, 54 + 4, 1);
+  if (sign) {
+    ret *= -1;
+  }
+  double d_tau_s = (s32)ret * C_1_2P30;
+  if ((d_tau_s < -GLO_D_TAU_MAX_S) || (GLO_D_TAU_MAX_S < d_tau_s)) {
+    return -1;
+  }
+  eph->glo.d_tau = d_tau_s;
+
+  /* extract E_n age of data */
+  *age_of_data_days = extract_word_glo(string, 49, 5);
+
+  /* extract n */
+  u16 glo_slot_id = extract_word_glo(string, 11, 5);
+  if (!glo_slot_id_is_valid(glo_slot_id)) {
+    return -1;
+  }
+  eph->sid.sat = glo_slot_id;
+
+  /* extract Ft (URA) */
+  eph->ura = f_t[extract_word_glo(string, 30, 4)];
+
+  /*extract Nt*/
+  u16 nt_days = (u16)extract_word_glo(string, 16, 11);
+  if (GLO_NT_MAX_DAYS < nt_days) {
+    return -1;
+  }
+  tk->nt = toe->nt = nt_days;
+
+  u32 M = extract_word_glo(string, 9, 2);
+  if (SV_GLONASS == M) {
+    /* this breaks the assumption that all visible GLO satellites should be
+       at least of "Glonass M" model*/
+    return -1;
+  }
+  return 0;
+}
+
+static int decode_glo_string_5(const glo_string_t *string, float *tau_gps_s) {
+  /* extract N4 */
+  u8 n4 = (u8)extract_word_glo(string, 32, 5);
+  /* ICD L1,L2 GLONASS edition 5.1 2008 Table 4.5 Table 4.9 */
+  if (0 == n4) {
+    return -1;
+  }
+  tk->n4 = toe->n4 = n4;
+
+  /* extract tau GPS [s] */
+  double tau_gps_s = extract_word_glo(string, 10, 21) * C_1_2P30;
+  u8 sign = extract_word_glo(string, 31, 1);
+  if (sign) {
+    tau_gps_s *= -1;
+  }
+  if (GLO_TAU_GPS_MAX_S < fabs(tau_gps_s)) {
+    return -1;
+  }
+
+  *tau_gps_s = (float)tau_gps_s;
+
+  return 0;
+}
+
+int decode_glo_ephemeris(const glo_string_t string[5],
+                          ephemeris_t *eph) {
+  glo_time_t tk = {0};
+  if (0 != decode_glo_string_1(&string[0], eph, &tk)) {
+    return -1;
+  }
+  glo_time_t toe = {0};
+  if (0 != decode_glo_string_2(&string[1], eph, &toe)) {
+    return -1;
+  }
+  if (0 != decode_glo_string_3(&string[2], eph, &toe)) {
+    return -1;
+  }
+  u8 age_of_data_days = 0;
+  if (0 != decode_glo_string_4(&string[3], eph, &tk, &toe, &age_of_data_days)) {
+    return -1;
+  }
+  float tau_gps_s = 0.F;
+  if (0 != decode_glo_string_5(string[4], &tau_gps_s)) {
+    return -1;
+  }
+  return 0;
+}
+
 static bool ephemeris_xyz_equal(const ephemeris_xyz_t *a,
                                 const ephemeris_xyz_t *b) {
   return (memcmp(a, b, sizeof(ephemeris_xyz_t)) == 0);
