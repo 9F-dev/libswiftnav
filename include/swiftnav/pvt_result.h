@@ -72,12 +72,14 @@ typedef struct {
   bool velocity_valid;
   double velocity[3];
   double velocity_covariance[9];
+  double baseline_velocity_covariance[9];
   u8 num_sats_used;
   u8 num_sigs_used;
   pvt_engine_result_flags_t flags;
   bool has_known_reference_pos;
   double known_reference_pos[3];
   double propagation_time;
+  double velocity_averaging_time;
 } pvt_engine_result_t;
 
 #ifdef __cplusplus
