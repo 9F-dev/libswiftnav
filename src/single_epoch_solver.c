@@ -1131,6 +1131,11 @@ static s8 pvt_solve_raim(const u8 n_used,
   bool solution_ok = (0 == flag);
 
   if (disable_raim) {
+    if(!solution_ok) {
+      for( s32 index = 0; index < n_used; ++index ) {
+        log_error_sid(nav_meas_ptrs[index]->sid, "Obs: %lf", nav_meas_ptrs[index]->pseudorange );
+      }
+    }
     /* RAIM disabled, do not check residuals */
     return solution_ok ? PVT_CONVERGED_NO_RAIM : PVT_UNCONVERGED;
   }
