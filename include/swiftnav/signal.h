@@ -329,12 +329,16 @@ static inline bool code_equiv(const code_t a, const code_t b) {
   if (a == b) {
     return true;
   } else if (a == CODE_GPS_L2CM && b == CODE_GPS_L2P) {
+    assert(false);
     return true;
   } else if (a == CODE_GPS_L2P && b == CODE_GPS_L2CM) {
+    assert(false);
     return true;
   } else if (a == CODE_GPS_L1P && b == CODE_GPS_L1CA) {
+    assert(false);
     return true;
   } else if (a == CODE_GPS_L1CA && b == CODE_GPS_L1P) {
+    assert(false);
     return true;
   } else {
     return false;
@@ -418,6 +422,9 @@ static inline int sid_compare(const gnss_signal_t a, const gnss_signal_t b) {
   if ((code_valid(a.code)) && code_valid(b.code)) {
     if (sid_to_constellation(a) == sid_to_constellation(b)) {
       if (code_equiv(a.code, b.code)) {
+        if (a.code != b.code) {
+          assert(false);
+        }
         return a.sat - b.sat;
       } else {
         return a.code - b.code;
@@ -427,6 +434,9 @@ static inline int sid_compare(const gnss_signal_t a, const gnss_signal_t b) {
     }
   } else {
     if (code_equiv(a.code, b.code)) {
+      if (a.code != b.code) {
+        assert(false);
+      }
       return a.sat - b.sat;
     }
     return a.code - b.code;
