@@ -417,7 +417,7 @@ static inline int sid_compare(const gnss_signal_t a, const gnss_signal_t b) {
    * constellation/frequency/satellite */
   if ((code_valid(a.code)) && code_valid(b.code)) {
     if (sid_to_constellation(a) == sid_to_constellation(b)) {
-      if (code_equiv(a.code, b.code)) {
+      if (a.code == b.code) {
         return a.sat - b.sat;
       } else {
         return a.code - b.code;
@@ -426,7 +426,7 @@ static inline int sid_compare(const gnss_signal_t a, const gnss_signal_t b) {
       return sid_to_constellation(a) - sid_to_constellation(b);
     }
   } else {
-    if (code_equiv(a.code, b.code)) {
+    if (a.code == b.code) {
       return a.sat - b.sat;
     }
     return a.code - b.code;
