@@ -1079,6 +1079,76 @@ u32 decode_fit_interval(u8 fit_interval_flag, u16 iodc) {
   return fit_interval * 60 * 60;
 }
 
+/**
+ * @return 1 for parity OK, 0 for parity not OK
+ */
+static u8 lnav_parity_check(const u32 word, const u8 prev_parity_bits) {
+  //(void)prev_parity_bits;
+  u32 parity_bits_top = prev_parity_bits;
+  parity_bits_top <<= 30;
+
+  // u32 incoming_prev_bits = (word >> 30);
+
+  u32 par_word = word;
+//  par_word &= 0x3FFFFFFF;
+//  par_word |= parity_bits_top;
+
+  bool flipped = false;
+//  if (par_word & 0x40000000) { /* Inspect D30* */
+    // printf("Bit flipping\n");
+//    par_word ^= 0x3FFFFFC0;  /* D30* = 1, invert all the data bits! */
+//    flipped = true;
+
+    // Should flip bytes d1 to d24
+//    u32 flipped_int = 0x03fffffc0L & ~par_word;
+//    u32 non_flipped = 0xC000003F & par_word;
+//
+//    par_word = flipped_int | non_flipped;
+
+//  }
+
+//  if ((word & 0xC0000000) != (parity_bits_top)) {
+//    printf("Top bits incorrect: %u, %u\n", word, parity_bits_top);
+//  }
+
+  /* Check D25 */
+  if (parity(par_word & 0xBB1F34A0 /* 0b10111011000111110011010010100000 */)) {
+    printf("Bad parity\n");
+    return 0;
+  }
+  /* Check D26 */
+  if (parity(par_word & 0x5D8F9A50 /* 0b01011101100011111001101001010000 */)) {
+    printf("Bad parity\n");
+    return 0;
+  }
+  /* Check D27 */
+  if (parity(par_word & 0xAEC7CD08 /* 0b10101110110001111100110100001000 */)) {
+    printf("Bad parity\n");
+    return 0;
+  }
+  /* Check D28 */
+  if (parity(par_word & 0x5763E684 /* 0b01010111011000111110011010000100 */)) {
+    printf("Bad parity\n");
+    return 0;
+  }
+  /* Check D29 */
+  if (parity(par_word & 0x6BB1F342 /* 0b01101011101100011111001101000010 */)) {
+    printf("Bad parity\n");
+    return 0;
+  }
+  /* Check D30 */
+  if (parity(par_word & 0x8B7A89C1 /* 0b10001011011110101000100111000001 */)) {
+    printf("Bad parity\n");
+    return 0;
+  }
+
+  if (flipped) {
+    printf("Flipped but with success!\n");
+  }
+
+  return 1;
+}
+
 /** Decode ephemeris from L1 C/A GPS navigation message frames.
  *
  * \note This function does not check for parity errors. You should check the
@@ -1092,7 +1162,8 @@ u32 decode_fit_interval(u8 fit_interval_flag, u16 iodc) {
  * \param e Pointer to an ephemeris struct to fill in.
  * \param tot_tow TOW for time of transmission
  */
-void decode_ephemeris(const u32 frame_words[3][8],
+
+void decode_ephemeris(const u32 frame_words[3][10],
                       ephemeris_t *e,
                       double tot_tow) {
   assert(frame_words != NULL);
@@ -1103,7 +1174,41 @@ void decode_ephemeris(const u32 frame_words[3][8],
   /* Subframe 1: WN, URA, SV health, T_GD, IODC, t_oc, a_f2, a_f1, a_f0 */
 
   /* GPS week number (mod 1024): Word 3, bits 1-10 */
-  u16 wn_raw = frame_words[0][3 - 3] >> (30 - 10) & 0x3FF;
+  u16 wn_raw = frame_words[0][3 - 1] >> (30 - 10) & 0x3FF;
+
+  // Check ephemeris validity for all words in the three subframes
+  // If invalid, set e->valid = false and return
+  for (int frame_idx = 0; frame_idx < 3; ++frame_idx) {
+    u8 prev_two_bits = 0;
+    for (int word_idx = 0; word_idx < 10; ++word_idx) {
+      if (!lnav_parity_check(frame_words[frame_idx][word_idx], prev_two_bits)) {
+        e->valid = false;
+        log_error("Parity error in sat %u, frame %d, word %d, bit 30: %u", e->sid.sat, frame_idx, word_idx, prev_two_bits & 0x01);
+
+        for (int i = 0; i < 3; i++) {
+          for (int j = 0; j < 8; j++) {
+            printf("%u ", frame_words[i][j]);
+            for (int l=31;l>=0;l--)
+            {
+                u32 byte = (frame_words[i][j] >> l) & 1;
+                printf("%u", byte);
+            }
+            printf(" ");
+          }
+          printf("\n");
+        }
+
+        //assert(false);
+
+        return;
+      }
+      else {
+        printf("Parity sat %u, frame %d OK\n", e->sid.sat, frame_idx);
+      }
+      // Store the two lowest bits, referred to as [D29*, D30*] in the GPS ICD
+      prev_two_bits = (frame_words[frame_idx][word_idx] & 0x03);
+    }
+  }
 
   /*
    * The ten MSBs of word three shall contain the ten LSBs of the
@@ -1115,7 +1220,7 @@ void decode_ephemeris(const u32 frame_words[3][8],
 
   /* t_oe: Word 10, bits 1-16 */
   e->toe.tow =
-      (frame_words[1][10 - 3] >> (30 - 16) & 0xFFFF) * GPS_LNAV_EPH_SF_TOE;
+      (frame_words[1][10 - 1] >> (30 - 16) & 0xFFFF) * GPS_LNAV_EPH_SF_TOE;
 
   bool toe_valid = gps_time_valid(&e->toe);
   if (toe_valid) {
@@ -1138,78 +1243,78 @@ void decode_ephemeris(const u32 frame_words[3][8],
 
   /* URA: Word 3, bits 13-16 */
   /* Value of 15 is unhealthy */
-  u8 ura_index = frame_words[0][3 - 3] >> (30 - 16) & 0xF;
+  u8 ura_index = frame_words[0][3 - 1] >> (30 - 16) & 0xF;
   e->ura = decode_ura_index(ura_index);
   log_debug_sid(e->sid, "URA = index %d, value %.1f", ura_index, e->ura);
 
   /* NAV data and signal health bits: Word 3, bits 17-22 */
-  e->health_bits = frame_words[0][3 - 3] >> (30 - 22) & 0x3F;
+  e->health_bits = frame_words[0][3 - 1] >> (30 - 22) & 0x3F;
   log_debug_sid(e->sid, "Health bits = 0x%02" PRIx8, e->health_bits);
 
   /* t_gd: Word 7, bits 17-24 */
-  k->tgd.gps_s[0] = (float)((s8)(frame_words[0][7 - 3] >> (30 - 24) & 0xFF) *
+  k->tgd.gps_s[0] = (float)((s8)(frame_words[0][7 - 1] >> (30 - 24) & 0xFF) *
                             GPS_LNAV_EPH_SF_TGD);
   /* L1-L5 TGD has to be filled up with C-NAV as combination of L1-L2 TGD and
    * ISC_L5 */
   k->tgd.gps_s[1] = 0.0;
 
   /* iodc: Word 3, bits 23-24 and word 8, bits 1-8 */
-  k->iodc = ((frame_words[0][3 - 3] >> (30 - 24) & 0x3) << 8) |
-            (frame_words[0][8 - 3] >> (30 - 8) & 0xFF);
+  k->iodc = ((frame_words[0][3 - 1] >> (30 - 24) & 0x3) << 8) |
+            (frame_words[0][8 - 1] >> (30 - 8) & 0xFF);
 
   /* t_oc: Word 8, bits 8-24 */
   k->toc.tow =
-      (frame_words[0][8 - 3] >> (30 - 24) & 0xFFFF) * GPS_LNAV_EPH_SF_TOC;
+      (frame_words[0][8 - 1] >> (30 - 24) & 0xFFFF) * GPS_LNAV_EPH_SF_TOC;
 
   /* a_f2: Word 9, bits 1-8 */
-  k->af2 = (s8)(frame_words[0][9 - 3] >> (30 - 8) & 0xFF) * GPS_LNAV_EPH_SF_AF2;
+  k->af2 = (s8)(frame_words[0][9 - 1] >> (30 - 8) & 0xFF) * GPS_LNAV_EPH_SF_AF2;
 
   /* a_f1: Word 9, bits 9-24 */
   k->af1 =
-      (s16)(frame_words[0][9 - 3] >> (30 - 24) & 0xFFFF) * GPS_LNAV_EPH_SF_AF1;
+      (s16)(frame_words[0][9 - 1] >> (30 - 24) & 0xFFFF) * GPS_LNAV_EPH_SF_AF1;
 
   /* a_f0: Word 10, bits 1-22 */
-  k->af0 = sign_extend22(frame_words[0][10 - 3] >> (30 - 22) & 0x3FFFFF) *
+  k->af0 = sign_extend22(frame_words[0][10 - 1] >> (30 - 22) & 0x3FFFFF) *
            GPS_LNAV_EPH_SF_AF0;
 
   /* Subframe 2: IODE, crs, dn, m0, cuc, ecc, cus, sqrta, toe, fit_interval */
 
   /* iode: Word 3, bits 1-8 */
-  u8 iode_sf2 = frame_words[1][3 - 3] >> (30 - 8) & 0xFF;
+  u8 iode_sf2 = frame_words[1][3 - 1] >> (30 - 8) & 0xFF;
 
   /* crs: Word 3, bits 9-24 */
   k->crs =
-      (s16)(frame_words[1][3 - 3] >> (30 - 24) & 0xFFFF) * GPS_LNAV_EPH_SF_CRS;
+      (s16)(frame_words[1][3 - 1] >> (30 - 24) & 0xFFFF) * GPS_LNAV_EPH_SF_CRS;
 
   /* dn: Word 4, bits 1-16 */
-  k->dn = (s16)(frame_words[1][4 - 3] >> (30 - 16) & 0xFFFF) *
+  k->dn = (s16)(frame_words[1][4 - 1] >> (30 - 16) & 0xFFFF) *
           (GPS_LNAV_EPH_SF_DN * GPS_PI);
 
   /* m0: Word 4, bits 17-24 and word 5, bits 1-24 */
-  k->m0 = (s32)(((frame_words[1][4 - 3] >> (30 - 24) & 0xFF) << 24) |
-                (frame_words[1][5 - 3] >> (30 - 24) & 0xFFFFFF)) *
+  k->m0 = (s32)(((frame_words[1][4 - 1] >> (30 - 24) & 0xFF) << 24) |
+                (frame_words[1][5 - 1] >> (30 - 24) & 0xFFFFFF)) *
           (GPS_LNAV_EPH_SF_M0 * GPS_PI);
 
   /* cuc: Word 6, bits 1-16 */
   k->cuc =
-      (s16)(frame_words[1][6 - 3] >> (30 - 16) & 0xFFFF) * GPS_LNAV_EPH_SF_CUC;
+      (s16)(frame_words[1][6 - 1] >> (30 - 16) & 0xFFFF) * GPS_LNAV_EPH_SF_CUC;
 
   /* ecc: Word 6, bits 17-24 and word 7, bits 1-24 */
-  k->ecc = (u32)(((frame_words[1][6 - 3] >> (30 - 24) & 0xFF) << 24) |
-                 (frame_words[1][7 - 3] >> (30 - 24) & 0xFFFFFF)) *
+  k->ecc = (u32)(((frame_words[1][6 - 1] >> (30 - 24) & 0xFF) << 24) |
+                 (frame_words[1][7 - 1] >> (30 - 24) & 0xFFFFFF)) *
            GPS_LNAV_EPH_SF_ECC;
 
   /* cus: Word 8, bits 1-16 */
   k->cus =
-      (s16)(frame_words[1][8 - 3] >> (30 - 16) & 0xFFFF) * GPS_LNAV_EPH_SF_CUS;
+      (s16)(frame_words[1][8 - 1] >> (30 - 16) & 0xFFFF) * GPS_LNAV_EPH_SF_CUS;
 
   /* sqrta: Word 8, bits 17-24 and word 9, bits 1-24 */
-  k->sqrta = (u32)(((frame_words[1][8 - 3] >> (30 - 24) & 0xFF) << 24) |
-                   (frame_words[1][9 - 3] >> (30 - 24) & 0xFFFFFF)) *
+  k->sqrta = (u32)(((frame_words[1][8 - 1] >> (30 - 24) & 0xFF) << 24) |
+                   (frame_words[1][9 - 1] >> (30 - 24) & 0xFFFFFF)) *
              GPS_LNAV_EPH_SF_SQRTA;
 
   /* fit_interval_flag: Word 10, bit 17 */
-  u8 fit_interval_flag = frame_words[1][10 - 3] >> (30 - 17) & 0x1;
+  u8 fit_interval_flag = frame_words[1][10 - 1] >> (30 - 17) & 0x1;
   e->fit_interval = decode_fit_interval(fit_interval_flag, k->iodc);
   log_debug_sid(e->sid, "Fit interval = %" PRIu32, e->fit_interval);
 
@@ -1217,40 +1322,40 @@ void decode_ephemeris(const u32 frame_words[3][8],
 
   /* cic: Word 3, bits 1-16 */
   k->cic =
-      (s16)(frame_words[2][3 - 3] >> (30 - 16) & 0xFFFF) * GPS_LNAV_EPH_SF_CIC;
+      (s16)(frame_words[2][3 - 1] >> (30 - 16) & 0xFFFF) * GPS_LNAV_EPH_SF_CIC;
 
   /* omega0: Word 3, bits 17-24 and word 4, bits 1-24 */
-  k->omega0 = (s32)(((frame_words[2][3 - 3] >> (30 - 24) & 0xFF) << 24) |
-                    (frame_words[2][4 - 3] >> (30 - 24) & 0xFFFFFF)) *
+  k->omega0 = (s32)(((frame_words[2][3 - 1] >> (30 - 24) & 0xFF) << 24) |
+                    (frame_words[2][4 - 1] >> (30 - 24) & 0xFFFFFF)) *
               (GPS_LNAV_EPH_SF_OMEGA0 * GPS_PI);
 
   /* cis: Word 5, bits 1-16 */
   k->cis =
-      (s16)(frame_words[2][5 - 3] >> (30 - 16) & 0xFFFF) * GPS_LNAV_EPH_SF_CIS;
+      (s16)(frame_words[2][5 - 1] >> (30 - 16) & 0xFFFF) * GPS_LNAV_EPH_SF_CIS;
 
   /* inc (i0): Word 5, bits 17-24 and word 6, bits 1-24 */
-  k->inc = (s32)(((frame_words[2][5 - 3] >> (30 - 24) & 0xFF) << 24) |
-                 (frame_words[2][6 - 3] >> (30 - 24) & 0xFFFFFF)) *
+  k->inc = (s32)(((frame_words[2][5 - 1] >> (30 - 24) & 0xFF) << 24) |
+                 (frame_words[2][6 - 1] >> (30 - 24) & 0xFFFFFF)) *
            (GPS_LNAV_EPH_SF_I0 * GPS_PI);
 
   /* crc: Word 7, bits 1-16 */
   k->crc =
-      (s16)(frame_words[2][7 - 3] >> (30 - 16) & 0xFFFF) * GPS_LNAV_EPH_SF_CRC;
+      (s16)(frame_words[2][7 - 1] >> (30 - 16) & 0xFFFF) * GPS_LNAV_EPH_SF_CRC;
 
   /* w (omega): Word 7, bits 17-24 and word 8, bits 1-24 */
-  k->w = (s32)(((frame_words[2][7 - 3] >> (30 - 24) & 0xFF) << 24) |
-               (frame_words[2][8 - 3] >> (30 - 24) & 0xFFFFFF)) *
+  k->w = (s32)(((frame_words[2][7 - 1] >> (30 - 24) & 0xFF) << 24) |
+               (frame_words[2][8 - 1] >> (30 - 24) & 0xFFFFFF)) *
          (GPS_LNAV_EPH_SF_W * GPS_PI);
 
   /* Omega_dot: Word 9, bits 1-24 */
-  k->omegadot = sign_extend24(frame_words[2][9 - 3] >> (30 - 24) & 0xFFFFFF) *
+  k->omegadot = sign_extend24(frame_words[2][9 - 1] >> (30 - 24) & 0xFFFFFF) *
                 (GPS_LNAV_EPH_SF_OMEGADOT * GPS_PI);
 
   /* iode: Word 10, bits 1-8 */
-  k->iode = frame_words[2][10 - 3] >> (30 - 8) & 0xFF;
+  k->iode = frame_words[2][10 - 1] >> (30 - 8) & 0xFF;
 
   /* inc_dot (IDOT): Word 10, bits 9-22 */
-  k->inc_dot = sign_extend14(frame_words[2][10 - 3] >> (30 - 22) & 0x3FFF) *
+  k->inc_dot = sign_extend14(frame_words[2][10 - 1] >> (30 - 22) & 0x3FFF) *
                (GPS_LNAV_EPH_SF_IDOT * GPS_PI);
 
   /* Both IODEs and IODC (8 LSBs) must match */

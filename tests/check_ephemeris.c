@@ -45,6 +45,18 @@ static const ephemeris_t gps_eph = {
                .iodc = 2,
                .iode = 2}};
 
+static const u32 ephemeris_subframe[3][8] = {{ 62128158, 2639302132, 779743166,
+                                               2585792572, 380502232, 299523620,
+                                               4190328, 949433620 },
+                                             { 297807591, 217448628, 777565048,
+                                               2146326, 2982093028, 81291387,
+                                               57833004, 442375968 },
+                                             { 1073034367, 644573512,
+                                               1073531325, 3010615141,
+                                               2250658401, 2628619903,
+                                               1072300235, 297927840 }};
+//ephemeris_subframe[0][0] = 62128158;
+
 /* GPS almanac for tests.
  * See scenario ME-45. */
 static const almanac_t gps_alm = {.sid = {.code = CODE_GPS_L1CA, .sat = 1},
@@ -63,13 +75,20 @@ static const almanac_t gps_alm = {.sid = {.code = CODE_GPS_L1CA, .sat = 1},
                                              .af0 = 2.574920654296875E-5,
                                              .af1 = 0.0}};
 
+START_TEST(test_ephemeris_parity_ok) {
+  ephemeris_t e;
+  memset(&e, 0, sizeof(e));
+  decode_ephemeris(ephemeris_subframe, &e, 0.0);
+  fail_unless(e.valid);
+}
+END_TEST
+
 START_TEST(test_ephemeris_almanac_divergence) {
   /* See scenario ME-45 description. */
 
   /* Initially just copy the original ephemeris. */
   ephemeris_t gps_eph_diverged;
   memcpy(&gps_eph_diverged, &gps_eph, sizeof(gps_eph_diverged));
-
   fail_unless(ephemeris_equal(&gps_eph, &gps_eph_diverged),
               "Ephemerides should be equal");
 
@@ -860,6 +879,7 @@ Suite *ephemeris_suite(void) {
   Suite *s = suite_create("Ephemeris");
 
   TCase *tc_core = tcase_create("Core");
+  tcase_add_test(tc_core, test_ephemeris_parity_ok);
   tcase_add_test(tc_core, test_ephemeris_almanac_divergence);
   tcase_add_test(tc_core, test_ephemeris_equal);
   tcase_add_test(tc_core, test_ephemeris_health);

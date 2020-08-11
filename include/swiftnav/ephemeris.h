@@ -260,7 +260,7 @@ u8 ephemeris_params_valid(const gps_time_t *bgn,
                           const gps_time_t *end,
                           const gps_time_t *toc,
                           const gps_time_t *t);
-void decode_ephemeris(const u32 frame_words[3][8],
+void decode_ephemeris(const u32 frame_words[3][10],
                       ephemeris_t *e,
                       double tot_tow);
 
